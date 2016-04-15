@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>服务器端</title>
+    <style type="text/css">
+        body{
+            font-family: KaiTi SC;
+        }
+        h1{
+            margin: 20px;
+            text-align: center;
+        }
+        #message{
+            border-top:1px dashed black;
+        }
+        #send {
+            width:400px;
+            margin: 50px auto;
+        }
+        #send span {
+            vertical-align: middle;
+        }
+        #send .input{
+            width:200px;
+            height: 30px;
+            font-size: 16px;
+        }
+        button{
+            height: 35px;
+            width:50px;
+            background: #000;
+            color:#fff;
+            border: none;
+            vertical-align: top;
+            font-family: KaiTi SC;
+            font-size: 13px;
+        }
+        .clients {
+          margin-top: 20px;
+        }
+        .clients ul {
+          margin:5px;
+        }
+          .clients ul  {
+            list-style-type: none;
+          }
+        .clients ul li input{
+          margin-right:10px;
+        }
+    </style>
+  </head>
+  <body>
+      <h1>服务器端口: 3000</h1>
+
+      <div id="send">
+          <span>输入消息：</span><input id="inputvalue" class="input" type="text"/>
+          <button class='btn' onclick="sendToClient()">发送</button>
+          <button class='btn' style='background:red' onclick="client.end();">关闭</button>
+          <div class="clients">
+            客户端列表：
+            <ul id="client">
+
+            </ul>
+            当前连接数：<span id="count" style="color:green"><span>
+          </div>
+      </div>
+      <div>
+          <h2>输出内容：</h2>
+
+      </div>
+
+      <div id="message" style="padding-left:10px">
+         <ul id="msg">
+         </ul>
+      </div>
+  </body>
+  <script>
+    //封装的log函数
+    function log(message,color){
+        var textColor = color || '#000';
+        var a = document.createElement("li");
+        a.innerHTML = message;
+        a.style.color = textColor;
+        document.querySelector('#msg'). appendChild(a);
+    }
+
+    function insertClient(port){
+        var a = document.createElement("li");
+        a.setAttribute("cid",port);
+        a.innerHTML = '<input id="' + port + '"type="checkbox"  />  客户端：' + port;
+        document.querySelector('#client'). appendChild(a);
+    }
+
+    function removeClient(port) {
+      var clientUl= document.getElementById('client');
+      var clients = clientUl.getElementsByTagName('li');
+      for(var i = 0;i < clients.length; i++){
+        if(clients[i].getAttribute('cid') == port){
+            (function(j){
+              clientUl.removeChild(clients[j]);
+            })(i);
+        }
+      }
+    }
+      //拿到文本框的值
+    function getValue(){
+      return document.getElementById('inputvalue').value;
+    }
+
+    var net = require('net');
+    var socketList = {};
+    /**
+     *  创建一个tcp服务器
+     */
+    var server = net.createServer((socket) => {
+      log('客户端' + socket.remotePort + '已连接到服务器','green');
+
+      //服务器连接数
+      server.getConnections((err,count) => {
+          document.getElementById('count').innerHTML = count;
+      });
+
+      insertClient(socket.remotePort);
+      socket.write('欢迎你' + socket.remotePort);
+      socketList[socket.remotePort] = socket;
+
+      socket.on('end',() => {
+          removeClient(socket.remotePort);
+          server.getConnections((err,count) => {
+            document.getElementById('count').innerHTML = count;
+          });
+          log('客户端' + socket.remotePort + '已经断开','red');
+
+      });
+      socket.on('data',(data) => {
+          log('来自客户端' + socket.remotePort +'的消息：' + data,'blue');
+      });
+
+
+  }).on('error',(err) => {
+      console.log(err);
+      throw err;
+  })
+
+  //服务器绑定端口
+  server.listen({
+      port:3000,
+      hostname:'localhost'
+  },()=>{
+      var address = server.address();
+      log('服务器已启动在：' + address.port,'green');
+  });
+  function sendToClient(){
+    var checkboxs = document.querySelectorAll("input[type='checkbox']:checked");
+    var ids = Array.prototype.slice.call(checkboxs).map(function(item){
+      return item.id;
+    });
+    for (var port in socketList){
+      if (ids.indexOf(port) !== -1){
+          socketList[port].write(getValue());
+      }
+    }
+  }
+
+  </script>
+</html>

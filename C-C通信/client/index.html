@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>客户端</title>
+    <style type="text/css">
+        body{
+            font-family: KaiTi SC;
+        }
+        h1{
+            margin: 20px;
+            text-align: center;
+        }
+        #message{
+            border-top:1px dashed black;
+        }
+        #send {
+            width:400px;
+            margin: 50px auto;
+        }
+        #send span {
+            vertical-align: middle;
+        }
+        #send .input{
+            width:200px;
+            height: 30px;
+            font-size: 16px;
+        }
+        button{
+            height: 35px;
+            width:50px;
+            background: #000;
+            color:#fff;
+            border: none;
+            vertical-align: top;
+            font-family: KaiTi SC;
+            font-size: 13px;
+        }
+    </style>
+  </head>
+  <body>
+      <h1>客户端: <span id="port"></span></h1>
+
+      <div id="send">
+          <span>输入消息：</span><input class="input" id="inputvalue" type="text"/>
+          <button class='btn' onclick="send()">发送</button>
+           <button class='btn' style='background:red' onclick="client.end();">断开</button>
+      </div>
+      <div>
+          <h2>输出内容：</h2>
+
+      </div>
+
+      <div id="message" style="padding-left:10px">
+         <ul id="msg">
+
+         </ul>
+      </div>
+  </body>
+  <script>
+
+    //log函数
+    function log(message,color){
+        var textColor = color || '#000';
+        var a = document.createElement("li");
+        a.innerHTML = message;
+        a.style.color = textColor;
+        document.querySelector('#msg'). appendChild(a);
+    }
+    //拿到文本框的值
+    function getValue(){
+      return document.getElementById('inputvalue').value;
+    }
+
+  /**
+   * 配置客户端本地端口
+   */
+
+  var net = require('net');
+  var client = net.connect({port:3000}, () => {
+
+    var localPort = client.address().port; //本地端口
+
+    document.getElementById('port').innerHTML = localPort;
+    log('客户端' + localPort + ' --已连接到服务器','green');
+
+    client.on('data', (data) => {
+        log('收到来自服务器端的信息: ' + data.toString(),'blue');
+    })
+
+  });
+
+  client.on('end', () => {
+      log('从服务器断开','red');
+  });
+  client.on('err', (err) => {
+      log('客户端3001错误：' + err,'red');
+  });
+
+  function send(){
+    client.write(getValue());
+    log('已向服务器发送信息: ' + getValue(),'#fb7e00');
+  }
+
+
+  </script>
+</html>
