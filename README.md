@@ -4,7 +4,6 @@
 
 客户端截图:<img width='300' height='300' src="https://github.com/NumberZ/Net-working-experiment/blob/master/images/client.png" />
 服务端截图:<img  width='300' height='300' src="https://github.com/NumberZ/Net-working-experiment/blob/master/images/server.png" />
-<strong>利用Electron实现C-S模式</strong>
 
 * 实验1:C-S通信
 
