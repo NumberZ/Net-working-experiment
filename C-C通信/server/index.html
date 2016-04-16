@@ -49,6 +49,8 @@
           margin-right:10px;
         }
     </style>
+    <script src="../lodash.min.js"></script>
+  </head>
   </head>
   <body>
       <h1>服务器端口: 3000</h1>
@@ -76,7 +78,7 @@
       </div>
   </body>
   <script>
-    //封装的log函数
+    //打印log函数
     function log(message,color){
         var textColor = color || '#000';
         var a = document.createElement("li");
@@ -84,14 +86,14 @@
         a.style.color = textColor;
         document.querySelector('#msg'). appendChild(a);
     }
-
+    //向界面客户端列表中插入checkbox
     function insertClient(port){
         var a = document.createElement("li");
         a.setAttribute("cid",port);
         a.innerHTML = '<input id="' + port + '"type="checkbox"  />  客户端：' + port;
         document.querySelector('#client'). appendChild(a);
     }
-
+    //移除界面客户端列表中的checkbox
     function removeClient(port) {
       var clientUl= document.getElementById('client');
       var clients = clientUl.getElementsByTagName('li');
@@ -103,18 +105,21 @@
         }
       }
     }
-      //拿到文本框的值
+    
+    //拿到文本框的值
     function getValue(){
       return document.getElementById('inputvalue').value;
     }
 
     var net = require('net');
     var socketList = {};
+    var socketPorts = []; //客户端监听的端口号
     /**
      *  创建一个tcp服务器
      */
     var server = net.createServer((socket) => {
       log('客户端' + socket.remotePort + '已连接到服务器','green');
+ 
 
       //服务器连接数
       server.getConnections((err,count) => {
@@ -122,19 +127,27 @@
       });
 
       insertClient(socket.remotePort);
-      socket.write('欢迎你' + socket.remotePort);
       socketList[socket.remotePort] = socket;
 
-      socket.on('end',() => {
+      socket.on('end',(port) => {
           removeClient(socket.remotePort);
           server.getConnections((err,count) => {
             document.getElementById('count').innerHTML = count;
           });
+          socketList = _.omit(socketList,socket.remotePort);
           log('客户端' + socket.remotePort + '已经断开','red');
 
       });
-      socket.on('data',(data) => {
-          log('来自客户端' + socket.remotePort +'的消息：' + data,'blue');
+      socket.on('data',(port) => {
+          port = port.toString();
+          if(socketPorts.indexOf(port) == -1){
+               socketPorts.push(port);
+          }else {
+              _.pull(socketPorts,port);
+          }
+          _.forEach(socketList,function(n,key){
+                n.write(socketPorts.toString());
+          });  
       });
 
 

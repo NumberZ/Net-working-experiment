@@ -36,15 +36,35 @@
             font-family: KaiTi SC;
             font-size: 13px;
         }
+        .clients {
+          margin-top: 20px;
+        }
+        .clients ul {
+          margin:5px;
+        }
+        .clients ul  {
+        list-style-type: none;
+        }
+        .clients ul li input{
+          margin-right:10px;
+        }
     </style>
+    <script src="../lodash.min.js"></script>
   </head>
   <body>
-      <h1>客户端: <span id="port"></span></h1>
-
+      <h1>客户端连接服务器: <span id="port"></span></h1>
+      <h1 style="color:green">客户端服务端口(监听中): <span id="listenPort"></span></h1>
       <div id="send">
           <span>输入消息：</span><input class="input" id="inputvalue" type="text"/>
           <button class='btn' onclick="send()">发送</button>
-           <button class='btn' style='background:red' onclick="client.end();">断开</button>
+          <button class='btn' style='background:red' onclick="client.end(listenPort);">下线</button>
+          <div class="clients">
+            好友在线列表：
+            <ul id="client">
+
+            </ul>
+            当前在线人数：<span id="count" style="color:green"><span>
+          </div>
       </div>
       <div>
           <h2>输出内容：</h2>
@@ -59,7 +79,7 @@
   </body>
   <script>
 
-    //log函数
+    //打印log函数
     function log(message,color){
         var textColor = color || '#000';
         var a = document.createElement("li");
@@ -67,40 +87,105 @@
         a.style.color = textColor;
         document.querySelector('#msg'). appendChild(a);
     }
+    
+    /** 
+     * 向好友列表插入好友
+     * @params {Array} ports 客户端端口号
+     */
+    function insertFriend(ports){
+        _.forEach(ports,function(port){
+            var a = document.createElement("li");
+            a.setAttribute("fid",port);
+            a.innerHTML = '<input id="' + port + '"type="radio"  name="friend"/>  客户端：' + port;
+            document.querySelector('#client'). appendChild(a);
+        });
+    }
+    
+    
+    /** 
+     * 移除好友列表里的客户
+     * @params {port} 
+     */
+    function removeFriend(port) {
+      var clientUl= document.getElementById('client');
+      var clients = clientUl.getElementsByTagName('li');
+      for(var i = 0;i < clients.length; i++){
+        if(clients[i].getAttribute('fid') == port){
+            (function(j){
+              clientUl.removeChild(clients[j]);
+            })(i);
+        }
+      }
+    }
+    
     //拿到文本框的值
     function getValue(){
       return document.getElementById('inputvalue').value;
     }
+    
+    /** 
+     * 刷新好友列表
+     * @params arr 从服务器拿到的好友列表
+     */
+    function refreshList(arr){
+        var arrLen = arr.length,
+        friendLen = friends.length;
+        if(arrLen > friendLen){
+            var addPorts = _.difference(arr,friends);
+            insertFriend(addPorts);
+        }else {
+           var removePort = _.difference(friends,arr)[0];
+           removeFriend(removePort)
+        }
+        friends = arr;
+    }
 
-  /**
-   * 配置客户端本地端口
-   */
-
-  var net = require('net');
-  var client = net.connect({port:3000}, () => {
-
-    var localPort = client.address().port; //本地端口
-
-    document.getElementById('port').innerHTML = localPort;
-    log('客户端' + localPort + ' --已连接到服务器','green');
-
+    /**
+     * 配置客户端本地端口
+     */
+    var net = require('net');
+    var listenPort;  //本地服务端口
+    var friends = []; //其它客户端端口列表
+    var localPort; //连接Server的端口
+    var client = net.connect({port:3000}, () => {
+        localPort = client.address().port;
+        document.getElementById('port').innerHTML = localPort;
+            log('客户端口：' + localPort + '已连接到服务器','#5ed125');
+        var server = net.createServer((socket) => {
+           socket.on('data',(data) => {
+               log(data.toString());
+           });
+        });
+        server.listen(()=>{
+            log('客户端口：' + server.address().port + '已启动监听','#5ed125');
+            listenPort = server.address().port.toString();
+            document.getElementById('listenPort').innerHTML = listenPort;
+            client.write(listenPort); //向服务端发送客户端监听的端口号
+        });
+    });
+    
+    //监听来自服务器的消息
     client.on('data', (data) => {
-        log('收到来自服务器端的信息: ' + data.toString(),'blue');
-    })
-
-  });
-
-  client.on('end', () => {
-      log('从服务器断开','red');
-  });
-  client.on('err', (err) => {
-      log('客户端3001错误：' + err,'red');
-  });
-
-  function send(){
-    client.write(getValue());
-    log('已向服务器发送信息: ' + getValue(),'#fb7e00');
-  }
+        refreshList(_.pull(data.toString().split(','),listenPort));
+    });
+    //服务器断开
+    client.on('end', () => {
+        log('从服务器断开','red');
+    });
+    //错误提示
+    client.on('err', (err) => {
+        log('客户端3001错误：' + err,'red');
+    });
+    //发送消息
+    function send(){
+        var targetPort = document.querySelector("input[type='radio']:checked").id;
+        console.log(targetPort);
+        var client2 = net.connect({port:targetPort},() =>{
+            client2.write('来自客户端' + listenPort + '的消息：' + getValue());
+            log('已向客户端' + targetPort +'发送消息：' + getValue(),'#fb7e00')
+            client2.end();
+        });
+    }
 
 
   </script>
